@@ -1,0 +1,15 @@
+fastapi
+uvicorn
+presidio-analyzer
+presidio-anonymizer
+onnxruntime
+pytest
+httpx
+networkx
+openai
+huggingface_hub
+tokenizers
+kuzu
+stix2
+qdrant-client
+sentence-transformers
