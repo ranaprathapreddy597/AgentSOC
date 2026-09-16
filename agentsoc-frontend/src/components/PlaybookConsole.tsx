@@ -49,23 +49,37 @@ export const PlaybookConsole: React.FC<PlaybookConsoleProps> = ({ workflow, risk
       </div>
 
       {/* Composite Risk Score Meter */}
-      <div className="grid grid-cols-2 gap-3 bg-slate-950/60 rounded-xl p-3.5 border border-slate-800/80">
-        <div>
-          <span className="text-[10px] font-mono text-slate-400 block uppercase">Composite Risk Score</span>
-          <span className={`text-2xl font-bold font-mono ${
-            isHighRisk ? 'text-rose-400 glow-rose' : 'text-emerald-400'
-          }`}>
-            {riskScore !== null ? riskScore.toFixed(3) : '--'}
-          </span>
-          <span className="text-[10px] text-slate-500 block font-mono">Formula: 0.7*C - 0.3*I</span>
+      <div className="bg-slate-950/60 rounded-xl p-4 border border-slate-800/80 space-y-4">
+        <div className="flex justify-between items-end">
+          <div>
+            <span className="text-xs font-mono text-slate-400 block uppercase tracking-wider mb-1">Composite Risk Score</span>
+            <div className="flex items-baseline space-x-2">
+              <span className={`text-3xl font-bold font-mono tracking-tight ${
+                isHighRisk ? 'text-rose-400 drop-shadow-[0_0_8px_rgba(244,63,94,0.5)]' : 'text-emerald-400 drop-shadow-[0_0_8px_rgba(16,185,129,0.5)]'
+              }`}>
+                {riskScore !== null ? riskScore.toFixed(1) : '--'}
+              </span>
+              <span className="text-xs text-slate-500 font-mono">/ 100.0</span>
+            </div>
+          </div>
+          <div className="text-right">
+            <span className="text-[10px] font-mono text-slate-500 block uppercase">Primary Action</span>
+            <span className={`text-sm font-bold font-mono block mt-0.5 ${
+              isHighRisk ? 'text-rose-300' : 'text-emerald-300'
+            }`}>
+              {workflow.primary_action}
+            </span>
+          </div>
         </div>
-        <div>
-          <span className="text-[10px] font-mono text-slate-400 block uppercase">Primary Action</span>
-          <span className={`text-sm font-bold font-mono block mt-1 ${
-            isHighRisk ? 'text-rose-300' : 'text-emerald-300'
-          }`}>
-            {workflow.primary_action}
-          </span>
+
+        {/* Visual Progress Bar */}
+        <div className="relative h-2.5 w-full bg-slate-900 rounded-full overflow-hidden border border-slate-800/60 shadow-inner">
+          <div 
+            className={`absolute top-0 left-0 h-full transition-all duration-1000 ease-out rounded-full ${
+              isHighRisk ? 'bg-gradient-to-r from-rose-600 to-rose-400' : 'bg-gradient-to-r from-emerald-600 to-emerald-400'
+            }`}
+            style={{ width: `${Math.min(Math.max((riskScore || 0), 0), 100)}%` }}
+          />
         </div>
       </div>
 

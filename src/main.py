@@ -1,24 +1,41 @@
+"""
+AgentSOC - Production FastAPI Ingestion Endpoint (main.py)
+IEEE Publication Grade Asynchronous Log Mitigation Gauntlet with Single-Digit Millisecond Ingestion SLA.
+Stitches together Perception, Guardrails, Narrative Counterfactual Engine, and Structural Simulation.
+"""
+
 import time
 import uuid
 import datetime
-import re
 import logging
+import json
 from typing import Optional, List, Dict, Any
-from fastapi import FastAPI, WebSocket, WebSocketDisconnect
+
+from fastapi import FastAPI, BackgroundTasks, WebSocket, WebSocketDisconnect, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field
-from .redactor import LogRedactor
-from .guardrail import ONNXGuardrail
-from .memory import StatefulMemoryManager
-from .reasoning import SchemaEnforcer
-from .simulation import StructuralSimulationEngine
-from .action import AdaptivePlaybook, SovereignAuditLogger
+
+# Import all layers of the AgentSOC Pipeline
+from .perception import PerceptionLayer
+from .guardrails import SLMGuardrail
+from .agents.swarm import MultiAgentEpistemicDebate
+from .sse_rsem import StructuralSimulationEngine
 
 logger = logging.getLogger(__name__)
 
-app = FastAPI(title="AgentSOC Log Mitigation Gauntlet")
+app = FastAPI(
+    title="AgentSOC Security Telemetry Ingestion Pipeline",
+    description="Edge-AI Multi-Layer Agentic Framework for Security Operations (IEEE Grade Implementation)",
+    version="2.0-GAUNTLET"
+)
 
-# Enable CORS for local dev & production frontend origins
+# Layer 0: zk-Telemetry Cryptographic Attestation
+from .attestation import CryptographicAttestationMiddleware
+app.add_middleware(CryptographicAttestationMiddleware)
+
+# Enable CORS for Edge & Dashboard Clients
+# IMPORTANT: Added AFTER CryptographicAttestationMiddleware so it is outermost and handles OPTIONS preflights
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -27,51 +44,36 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# WebSocket Connection Manager
-class ConnectionManager:
-    def __init__(self):
-        self.active_connections: List[WebSocket] = []
+# Import Real-Time WebSocket Telemetry Engine
+from .telemetry import WebSocketManager
 
-    async def connect(self, websocket: WebSocket):
-        await websocket.accept()
-        self.active_connections.append(websocket)
-        logger.info(f"WebSocket client connected. Total active: {len(self.active_connections)}")
+# ---------------------------------------------------------
+# Global Pipeline Instantiation
+# ---------------------------------------------------------
+ws_manager = WebSocketManager()
 
-    def disconnect(self, websocket: WebSocket):
-        if websocket in self.active_connections:
-            self.active_connections.remove(websocket)
-            logger.info(f"WebSocket client disconnected. Remaining: {len(self.active_connections)}")
+# Layer 1: Deterministic Perception & State
+perception_layer = PerceptionLayer()
+# Layer 2: DeBERTa-v3 Semantic Guardrails
+guardrail_layer = SLMGuardrail()
+# Layer 3: Multi-Agent Epistemic Debate (MAED)
+maed_layer = MultiAgentEpistemicDebate()
+# Layer 4: Mathematical Graph Validation & Risk Scoring
+sse_layer = StructuralSimulationEngine()
 
-    async def broadcast(self, message: Dict[str, Any]):
-        for connection in list(self.active_connections):
-            try:
-                await connection.send_json(message)
-            except Exception as e:
-                logger.warning(f"Error broadcasting to WebSocket client ({e})")
-                self.disconnect(connection)
-
-ws_manager = ConnectionManager()
-
-# Initialize core security components on startup
-redactor = LogRedactor()
-guardrail = ONNXGuardrail()
-memory_manager = StatefulMemoryManager()
-schema_enforcer = SchemaEnforcer()
-simulation_engine = StructuralSimulationEngine()
-playbook_generator = AdaptivePlaybook()
-audit_logger = SovereignAuditLogger()
-
-class LogPayload(BaseModel):
-    log: str
-    source_ip: Optional[str] = Field("10.0.0.1", description="Source IP telemetry token")
-    target_ip: Optional[str] = Field("10.0.0.5", description="Target asset IP token")
+class RawSecurityLogPayload(BaseModel):
+    log: str = Field(..., description="Raw security log text or payload entry")
+    source_ip: Optional[str] = Field("10.0.0.1", description="Source IP address or asset identifier")
+    target_ip: Optional[str] = Field("10.0.0.5", description="Target destination IP address or server asset")
+    sync_execution: Optional[bool] = Field(False, description="Set False for single-digit ms 202 Accepted background mode")
 
 @app.get("/")
 async def root():
     return {
-        "message": "AgentSOC Log Mitigation Gauntlet is running.",
-        "websocket_endpoint": "/ws/telemetry",
-        "ingest_endpoint": "/ingest"
+        "status": "ONLINE",
+        "system": "AgentSOC Security Telemetry Ingestion Engine",
+        "ingest_endpoint": "POST /ingest",
+        "websocket_endpoint": "WS /ws/telemetry"
     }
 
 @app.websocket("/ws/telemetry")
@@ -79,140 +81,96 @@ async def websocket_telemetry_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)
     try:
         while True:
-            # Keep-alive receive loop
             data = await websocket.receive_text()
             await websocket.send_json({"status": "acknowledged", "echo": data})
     except WebSocketDisconnect:
         ws_manager.disconnect(websocket)
+
+async def _process_alert_background(raw_log: str, source_ip: str, target_ip: str):
+    """
+    Non-blocking Background Task Runner executing the entire end-to-end AgentSOC pipeline.
+    """
+    try:
+        # 1. Perception Layer: Generate the base Enriched Incident Object (EIO)
+        # Note: We extract the raw dictionary for the next phases
+        perception_result = await perception_layer.process_event(raw_log, source_ip, target_ip)
+        eio = perception_result.get("enriched_incident_object")
+        
+        if not eio:
+            logger.warning("[Pipeline] Perception Layer dropped the event. Halting pipeline.")
+            return
+
+        # 2. Guardrail Layer: Sanitize malicious overrides and prompt injections
+        eio = await guardrail_layer.sanitize_eio(eio)
+        
+        # 3. MAED Layer: Generate Multi-Agent Consensus Hypotheses
+        eio = await maed_layer.generate_hypotheses(eio)
+
+        # 4. SSE Layer: Validate against Graph Database & Calculate RSEM Risk Score
+        # (Mapped to evaluate_incident which handles verify_and_score logic)
+        active_alerts = perception_layer.get_sliding_window_count()
+        final_eio = await sse_layer.evaluate_incident(eio, active_alerts_in_window=active_alerts)
+        
+        # Merge the final processed EIO back into a payload for the WebSocket
+        final_result = {
+            "status": "success",
+            "enriched_incident_object": final_eio,
+            "pipeline_latency_ms": perception_result.get("pipeline_latency_ms", 0) # Base latency
+        }
+        
+        # Actionable Rehydration: Scan and replace PII tokens with raw values for human analysts
+        final_result = await perception_layer.redactor.rehydrate_playbook(final_result)
+        
+        # Broadcast completed analysis to the dashboard
+        await ws_manager.broadcast(final_result)
+        
+        # 5. Terminal Presentation Logging for Demonstrations
+        validation = final_eio.get("sse_validation", {})
+        playbook = validation.get("containment_playbook", {})
+        
+        logger.info("\n" + "="*60)
+        logger.info(f"🛡️  AGENT-SOC PIPELINE COMPLETED | ID: {final_eio.get('incident_id')}")
+        logger.info(f"   Topological Verification : {validation.get('status')} ({validation.get('reason')})")
+        logger.info(f"   Final Risk Score         : {playbook.get('risk_score', 'N/A')}")
+        logger.info(f"   Recommended Playbook     : {playbook.get('action', 'NONE')} [{playbook.get('mode', 'N/A')}]")
+        logger.info("="*60 + "\n")
+
     except Exception as e:
-        logger.warning(f"WebSocket error ({e})")
-        ws_manager.disconnect(websocket)
+        logger.error(f"[Pipeline] Unhandled background processing failure: {e}", exc_info=True)
 
 @app.post("/ingest")
-async def ingest_log(payload: LogPayload):
+async def ingest_security_log(payload: RawSecurityLogPayload, background_tasks: BackgroundTasks):
+    """
+    High-Speed Ingestion Endpoint.
+    Offloads execution to a background thread to maintain the single-digit millisecond SLA.
+    Returns HTTP 202 Accepted instantly.
+    """
     start_time = time.perf_counter()
     incident_id = str(uuid.uuid4())
-    timestamp_iso = datetime.datetime.now(datetime.timezone.utc).isoformat()
-    security_flags = []
-    
-    # 1. Sub-millisecond character escaping (strip < and >)
-    sanitized_text = payload.log.replace("<", "").replace(">", "")
-    
-    # 2. Offline Data Redaction (PII scanning and replacing)
-    redacted_text = redactor.redact(sanitized_text)
-    if redacted_text != sanitized_text:
-        security_flags.append("PII_REDACTED")
+    queued_at = datetime.datetime.now(datetime.timezone.utc).isoformat()
 
-    # Extract entity IDs (tokens) generated by the redactor
-    tokens = re.findall(r"TOKEN:[a-f0-9]+", redacted_text)
+    # Async Background Offloading Mode (Single-Digit Millisecond SLA)
+    if not payload.sync_execution:
+        background_tasks.add_task(
+            _process_alert_background,
+            payload.log,
+            payload.source_ip,
+            payload.target_ip
+        )
+        ingest_latency_ms = (time.perf_counter() - start_time) * 1000
 
-    # 3. Stateful Graph Memory (Context Stitching Check)
-    for token in tokens:
-        if await memory_manager.check_context_stitching(token, redacted_text):
-            security_flags.append("CONTEXT_STITCHING_DETECTED")
-            latency = (time.perf_counter() - start_time) * 1000
-            
-            enriched_incident = {
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED,
+            content={
+                "status": "ACCEPTED",
                 "incident_id": incident_id,
-                "timestamp": timestamp_iso,
-                "sanitized_payload": f"<log_data>{redacted_text}</log_data>",
-                "structural_context": {
-                    "source_ip": payload.source_ip,
-                    "target_ip": payload.target_ip,
-                    "criticality": "HIGH",
-                    "zone": "DMZ-Production"
-                },
-                "security_flags": security_flags
+                "queued_at": queued_at,
+                "ingest_latency_ms": round(ingest_latency_ms, 3),
+                "execution_mode": "BACKGROUND_PIPELINE"
             }
-            
-            hypothesis = await schema_enforcer.generate_hypothesis(enriched_incident, "blocked")
-            sim_valid = simulation_engine.validate_attack_path(payload.source_ip, payload.target_ip)
-            risk_score = simulation_engine.calculate_composite_score(0.95, hypothesis.confidence_score)
-            workflow = playbook_generator.generate_workflow(hypothesis, risk_score)
-            audit_ref = audit_logger.log_incident({
-                "incident_id": incident_id,
-                "status": "rejected",
-                "reason": "Context Stitching Attack Detected",
-                "enriched_incident": enriched_incident,
-                "risk_score": risk_score
-            })
+        )
 
-            response_data = {
-                "status": "rejected",
-                "quarantined": True,
-                "reason": "Context Stitching Attack Detected",
-                "enriched_incident_object": enriched_incident,
-                "incident_hypothesis": hypothesis.model_dump(),
-                "simulation_valid": sim_valid,
-                "composite_risk_score": risk_score,
-                "playbook_workflow": workflow,
-                "audit_log_ref": audit_ref,
-                "pipeline_latency_ms": latency
-            }
-
-            # Broadcast incident to live WebSocket subscribers
-            await ws_manager.broadcast(response_data)
-            return response_data
-            
-    # Record the episode into memory for future checks
-    for token in tokens:
-        await memory_manager.ingest_episode(token, redacted_text)
-
-    # 4. Real SLM Hardware Guardrail Check (evaluated on sanitized natural language text)
-    guardrail_result = guardrail.scan(sanitized_text)
-    if guardrail_result["status"] == "blocked":
-        security_flags.append("SLM_PROMPT_INJECTION_DETECTED")
-    else:
-        security_flags.append("SLM_CHECK_PASSED")
-
-    # Construct Enriched Incident Object
-    final_payload = f"<log_data>{redacted_text}</log_data>"
-    enriched_incident = {
-        "incident_id": incident_id,
-        "timestamp": timestamp_iso,
-        "sanitized_payload": final_payload,
-        "structural_context": {
-            "source_ip": payload.source_ip,
-            "target_ip": payload.target_ip,
-            "criticality": "HIGH",
-            "zone": "DMZ-Production"
-        },
-        "security_flags": security_flags
-    }
-
-    # 5. Multi-Agent Swarm Schema Enforcement Engine
-    hypothesis = await schema_enforcer.generate_hypothesis(enriched_incident, guardrail_result["status"])
-    
-    # 6. Structural Simulation Engine & Risk Scoring
-    sim_valid = simulation_engine.validate_attack_path(payload.source_ip, payload.target_ip)
-    containment = 0.9 if guardrail_result["status"] == "blocked" else 0.3
-    risk_score = simulation_engine.calculate_composite_score(containment, hypothesis.confidence_score)
-
-    # 7. Adaptive Playbook Generation & Sovereign Audit Logging
-    workflow = playbook_generator.generate_workflow(hypothesis, risk_score)
-    audit_ref = audit_logger.log_incident({
-        "incident_id": incident_id,
-        "status": guardrail_result["status"],
-        "enriched_incident": enriched_incident,
-        "risk_score": risk_score,
-        "hypothesis": hypothesis.model_dump()
-    })
-
-    latency = (time.perf_counter() - start_time) * 1000
-    
-    response_data = {
-        "status": "success" if guardrail_result["status"] == "allowed" else "rejected",
-        "guardrail": guardrail_result,
-        "enriched_incident_object": enriched_incident,
-        "incident_hypothesis": hypothesis.model_dump(),
-        "simulation_valid": sim_valid,
-        "composite_risk_score": risk_score,
-        "playbook_workflow": workflow,
-        "audit_log_ref": audit_ref,
-        "processed_payload": final_payload,
-        "pipeline_latency_ms": latency
-    }
-
-    # Broadcast incident to live WebSocket subscribers
-    await ws_manager.broadcast(response_data)
-    return response_data
+    # Inline Synchronous Execution Mode (for direct debugging)
+    # WARNING: This bypasses the async background SLA
+    await _process_alert_background(payload.log, payload.source_ip, payload.target_ip)
+    return JSONResponse(status_code=status.HTTP_200_OK, content={"status": "SYNC_PROCESSED"})

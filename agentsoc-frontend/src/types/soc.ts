@@ -52,4 +52,10 @@ export interface IngestResponse {
   audit_log_ref: string;
   processed_payload?: string;
   pipeline_latency_ms: number;
+  sandbox_confirmation?: {
+    status: string;
+    container_id: string;
+    target_ip: string;
+    timestamp: string;
+  } | null;
 }

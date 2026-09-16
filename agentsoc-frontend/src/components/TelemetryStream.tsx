@@ -146,6 +146,36 @@ export const TelemetryStream: React.FC<TelemetryStreamProps> = ({ currentRespons
           </pre>
         </div>
       </div>
+
+      {/* Active Closed-Loop Docker Sandbox Isolation Confirmation */}
+      {currentResponse.sandbox_confirmation && (
+        <div className="mt-4 border border-rose-500/30 bg-rose-950/20 rounded-xl p-4 shadow-[0_0_15px_rgba(244,63,94,0.15)]">
+          <span className="text-[11px] font-mono font-bold text-rose-400 flex items-center space-x-2 mb-2 uppercase tracking-wide">
+            <ShieldAlert className="w-4 h-4" />
+            <span>Autonomous Container Isolation Executed</span>
+          </span>
+          <div className="grid grid-cols-2 gap-3 font-mono text-[10px]">
+            <div>
+              <span className="text-slate-500 block mb-0.5">CONTAINER ID</span>
+              <span className="text-slate-300 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800">
+                {currentResponse.sandbox_confirmation.container_id}
+              </span>
+            </div>
+            <div>
+              <span className="text-slate-500 block mb-0.5">TARGET IP NETWORK</span>
+              <span className="text-rose-300 font-bold bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800">
+                SEVERED: {currentResponse.sandbox_confirmation.target_ip}
+              </span>
+            </div>
+            <div className="col-span-2">
+              <span className="text-slate-500 block mb-0.5">ISOLATION TIMESTAMP (UTC)</span>
+              <span className="text-slate-400 bg-slate-900/80 px-2 py-0.5 rounded border border-slate-800 inline-block">
+                {currentResponse.sandbox_confirmation.timestamp}
+              </span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

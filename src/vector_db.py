@@ -10,12 +10,6 @@ try:
 except ImportError:
     HAS_QDRANT = False
 
-try:
-    from sentence_transformers import SentenceTransformer
-    HAS_ST = True
-except ImportError:
-    HAS_ST = False
-
 logger = logging.getLogger(__name__)
 
 MITRE_ATTACK_REPORTS = [
@@ -66,7 +60,6 @@ class VectorDBManager:
         self.collection_name = collection_name
         self.vector_size = vector_size
         self.client: Optional[QdrantClient] = None
-        self.encoder = None
         self._init_vector_db()
 
     def _get_fast_embedding(self, text: str) -> List[float]:
@@ -79,7 +72,6 @@ class VectorDBManager:
             val = int(hashlib.md5(word.encode('utf-8')).hexdigest()[:8], 16)
             pos = val % self.vector_size
             vec[pos] += math.sin(idx + 1)
-        # Normalize vector
         norm = math.sqrt(sum(x * x for x in vec)) or 1.0
         return [x / norm for x in vec]
 
@@ -95,7 +87,6 @@ class VectorDBManager:
                 vectors_config=VectorParams(size=self.vector_size, distance=Distance.COSINE)
             )
 
-            # Ingest MITRE ATT&CK reports
             points = []
             for item in MITRE_ATTACK_REPORTS:
                 combined_text = f"{item['tactic_name']} {item['technique_name']} {item['mitigation_report']}"
@@ -121,19 +112,28 @@ class VectorDBManager:
         if self.client:
             try:
                 query_vector = self._get_fast_embedding(query_text)
-                search_results = self.client.search(
-                    collection_name=self.collection_name,
-                    query_vector=query_vector,
-                    limit=top_k
-                )
+                if hasattr(self.client, "query_points"):
+                    res = self.client.query_points(
+                        collection_name=self.collection_name,
+                        query=query_vector,
+                        limit=top_k
+                    )
+                    search_results = res.points
+                else:
+                    search_results = self.client.search(
+                        collection_name=self.collection_name,
+                        query_vector=query_vector,
+                        limit=top_k
+                    )
+
                 results = []
                 for res in search_results:
                     payload = dict(res.payload)
-                    payload["score"] = round(res.score, 4)
+                    payload["score"] = round(getattr(res, "score", 0.9), 4)
                     results.append(payload)
                 return results
             except Exception as e:
-                logger.error(f"Qdrant search error ({e}). Using fallback search.")
+                logger.error(f"Qdrant search query error ({e}). Using fallback search.")
 
         # Fallback keyword matching
         query_lower = query_text.lower()

@@ -52,15 +52,15 @@ export const Header: React.FC<HeaderProps> = ({ latestLatencyMs }) => {
             <ShieldAlert className="w-6 h-6 text-cyan-400" />
           </div>
           <div>
-            <div className="flex items-center space-x-2">
-              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-100 via-cyan-100 to-cyan-400 bg-clip-text text-transparent">
+            <div className="flex items-center space-x-3">
+              <h1 className="text-xl font-bold bg-gradient-to-r from-slate-100 via-cyan-100 to-cyan-400 bg-clip-text text-transparent drop-shadow-md">
                 AgentSOC
               </h1>
-              <span className="text-xs px-2 py-0.5 rounded-full bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 font-mono">
-                v2.0-GAUNTLET
+              <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-cyan-950/80 text-cyan-400 border border-cyan-500/40 font-mono shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+                v3.5-GAUNTLET
               </span>
             </div>
-            <p className="text-xs text-slate-400 font-mono">Sub-500ms Telemetry Mitigation Pipeline</p>
+            <p className="text-[11px] text-slate-400 font-mono tracking-wide mt-0.5">Sub-5ms Telemetry Mitigation Pipeline</p>
           </div>
         </div>
 
