@@ -103,6 +103,19 @@ class StructuralSimulationEngine:
         
         hypothesis = eio.get("incident_hypothesis", {})
         
+        if eio.get("llm_offline_abort"):
+            logger.warning("[SSE] LLM Offline Abort flag detected. Bypassing RSEM validation.")
+            eio["sse_validation"] = {
+                "status": "INFEASIBLE",
+                "reason": "LLM_OFFLINE",
+                "containment_playbook": {
+                    "risk_score": 0.0,
+                    "action": "NONE",
+                    "mode": "OFFLINE"
+                }
+            }
+            return eio
+        
         # We assume a default confidence if the local LLM didn't provide one
         llm_confidence = hypothesis.get("confidence", 0.90) 
         technique_id = hypothesis.get("technique_id", "T1021")

@@ -32,7 +32,7 @@ class NarrativeCounterfactualEngine:
                  base_url: str = "http://localhost:1234/v1", 
                  api_key: str = "lm-studio",
                  model_name: str = "local-model",
-                 timeout_seconds: float = 10.0):
+                 timeout_seconds: float = 120.0):
         self.base_url = base_url
         self.api_key = api_key
         self.model_name = model_name

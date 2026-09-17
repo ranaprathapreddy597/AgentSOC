@@ -40,8 +40,16 @@ export const ReasoningPanel: React.FC<ReasoningPanelProps> = ({ hypothesis, simu
           Consensus Score
         </span>
       </div>
-
-      {/* Attack Categorization */}
+      
+      {hypothesis.llm_status === "offline" ? (
+        <div className="bg-slate-900/60 rounded-xl p-6 border border-slate-700/50 flex flex-col items-center justify-center text-center space-y-3">
+          <Cpu className="w-10 h-10 text-slate-600 mb-2" />
+          <h3 className="text-slate-300 font-semibold uppercase tracking-widest text-sm">LLM Engine Offline</h3>
+          <p className="text-slate-500 text-xs font-mono">Awaiting LM Studio Connection...</p>
+        </div>
+      ) : (
+        <>
+          {/* Attack Categorization */}
       <div className="bg-slate-950/60 rounded-xl p-3.5 border border-slate-800/80 space-y-2">
         <div className="flex items-center justify-between">
           <span className="text-[11px] font-mono text-slate-400">DETECTED ATTACK TYPE:</span>
@@ -100,6 +108,8 @@ export const ReasoningPanel: React.FC<ReasoningPanelProps> = ({ hypothesis, simu
           <span>{hypothesis.recommended_action}</span>
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 };

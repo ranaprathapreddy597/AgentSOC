@@ -76,6 +76,25 @@ async def root():
         "websocket_endpoint": "WS /ws/telemetry"
     }
 
+@app.get("/status/llm")
+async def llm_status():
+    """
+    Health Check Probe for LM Studio.
+    Pings the LM Studio GET /v1/models endpoint asynchronously with a 2-second timeout.
+    """
+    import httpx
+    try:
+        async with httpx.AsyncClient(timeout=2.0) as client:
+            response = await client.get("http://127.0.0.1:1234/v1/models")
+            if response.status_code == 200:
+                return {"status": "online", "models": response.json().get("data", [])}
+            else:
+                return JSONResponse(status_code=503, content={"status": "offline", "error": f"LM Studio returned status {response.status_code}"})
+    except (httpx.ConnectError, httpx.TimeoutException) as e:
+        return JSONResponse(status_code=503, content={"status": "offline", "error": "Connection refused to LM Studio on port 1234"})
+    except Exception as e:
+        return JSONResponse(status_code=503, content={"status": "offline", "error": str(e)})
+
 @app.websocket("/ws/telemetry")
 async def websocket_telemetry_endpoint(websocket: WebSocket):
     await ws_manager.connect(websocket)

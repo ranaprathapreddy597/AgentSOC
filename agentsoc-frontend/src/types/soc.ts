@@ -23,6 +23,7 @@ export interface IncidentHypothesis {
   confidence_score: number;
   mitre_tactics: string[];
   recommended_action: string;
+  llm_status?: string;
 }
 
 export interface GuardrailResult {
@@ -33,10 +34,11 @@ export interface GuardrailResult {
 
 export interface PlaybookWorkflow {
   primary_action: string;
-  severity: "CRITICAL" | "HIGH" | "LOW_MEDIUM";
+  severity: string;
   risk_score_evaluated: number;
   mitre_tactics: string[];
   execution_steps: string[];
+  mode?: string;
 }
 
 export interface IngestResponse {

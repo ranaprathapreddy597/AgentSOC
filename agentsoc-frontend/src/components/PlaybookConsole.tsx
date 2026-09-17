@@ -21,6 +21,16 @@ export const PlaybookConsole: React.FC<PlaybookConsoleProps> = ({ workflow, risk
     );
   }
 
+  if (workflow.mode === "OFFLINE") {
+    return (
+      <div className="cyber-glass-card rounded-2xl p-6 border border-slate-800/80 shadow-2xl flex flex-col items-center justify-center text-center min-h-[220px]">
+        <ShieldAlert className="w-8 h-8 text-slate-600 mb-2" />
+        <h3 className="text-slate-300 font-semibold uppercase tracking-widest text-sm">Playbook Offline</h3>
+        <p className="text-slate-500 text-xs font-mono mt-1">Awaiting LM Studio Connection for Risk Computation.</p>
+      </div>
+    );
+  }
+
   const handleCopyAudit = () => {
     if (auditRef) {
       navigator.clipboard.writeText(auditRef);

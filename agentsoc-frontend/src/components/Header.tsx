@@ -7,6 +7,7 @@ interface HeaderProps {
 
 export const Header: React.FC<HeaderProps> = ({ latestLatencyMs }) => {
   const [isConnected, setIsConnected] = useState<boolean>(false);
+  const [llmOnline, setLlmOnline] = useState<boolean>(false);
   const [currentTime, setCurrentTime] = useState<string>('');
 
   useEffect(() => {
@@ -29,6 +30,18 @@ export const Header: React.FC<HeaderProps> = ({ latestLatencyMs }) => {
         }
       } catch {
         setIsConnected(false);
+      }
+      
+      try {
+        const llmRes = await fetch('http://127.0.0.1:8000/status/llm');
+        if (llmRes.ok) {
+          const data = await llmRes.json();
+          setLlmOnline(data.status === 'online');
+        } else {
+          setLlmOnline(false);
+        }
+      } catch {
+        setLlmOnline(false);
       }
     };
     checkConnection();
@@ -91,9 +104,13 @@ export const Header: React.FC<HeaderProps> = ({ latestLatencyMs }) => {
           </div>
 
           {/* Model Status Badge */}
-          <div className="hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-lg bg-slate-900/80 border border-indigo-500/30 text-indigo-300 text-xs font-mono">
-            <Cpu className="w-4 h-4 text-indigo-400" />
-            <span>Sovraine-ONNX / LM Studio</span>
+          <div className={`hidden lg:flex items-center space-x-2 px-3 py-1.5 rounded-lg border text-xs font-mono transition-colors ${
+            llmOnline 
+              ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-400' 
+              : 'bg-slate-900/80 border-slate-700/50 text-slate-500'
+          }`}>
+            <Cpu className="w-4 h-4" />
+            <span>{llmOnline ? 'LM Studio Connected' : 'LM Studio Offline'}</span>
           </div>
 
           {/* Live Clock */}

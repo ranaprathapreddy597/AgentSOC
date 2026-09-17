@@ -40,18 +40,20 @@ export function App() {
             },
             incident_hypothesis: {
               attack_type: eio.incident_hypothesis?.suspected_tactic || "Unknown",
-              confidence_score: eio.incident_hypothesis?.confidence || 0.85,
+              confidence_score: eio.incident_hypothesis?.maed_consensus_score ?? eio.incident_hypothesis?.confidence ?? 0.85,
               mitre_tactics: [eio.incident_hypothesis?.technique_id || "T0000"],
-              recommended_action: eio.incident_hypothesis?.counterfactual_hypotheses?.[0] || "Monitor"
+              recommended_action: eio.incident_hypothesis?.counterfactual_hypotheses?.[0] || "Monitor",
+              llm_status: eio.incident_hypothesis?.llm_status || "online"
             },
             simulation_valid: eio.sse_validation?.status === "VERIFIED",
-            composite_risk_score: eio.sse_validation?.containment_playbook?.risk_score || 50,
+            composite_risk_score: eio.sse_validation?.containment_playbook?.risk_score ?? 50,
             playbook_workflow: {
               primary_action: eio.sse_validation?.containment_playbook?.action || "MONITOR",
               severity: "HIGH",
-              risk_score_evaluated: eio.sse_validation?.containment_playbook?.risk_score || 50,
+              risk_score_evaluated: eio.sse_validation?.containment_playbook?.risk_score ?? 50,
               mitre_tactics: [eio.incident_hypothesis?.technique_id || "T0000"],
-              execution_steps: eio.sse_validation?.recommended_mitigations || ["Isolate Host"]
+              execution_steps: eio.sse_validation?.recommended_mitigations || ["Isolate Host"],
+              mode: eio.sse_validation?.containment_playbook?.mode || "UNKNOWN"
             },
             audit_log_ref: "WORM-S3-" + (eio.incident_id?.substring(0,8) || "0000"),
             processed_payload: eio.sanitized_payload,
